@@ -28,12 +28,15 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.22;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
 document.getElementById('game').appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(PALETTE.sky);
-scene.fog = new THREE.Fog(new THREE.Color(PALETTE.fog), 30, 95);
-const camera = new THREE.PerspectiveCamera(74, window.innerWidth / window.innerHeight, 0.05, 220);
+scene.fog = new THREE.Fog(new THREE.Color(PALETTE.fog), 42, 135);
+const camera = new THREE.PerspectiveCamera(74, window.innerWidth / window.innerHeight, 0.05, 520);
 scene.add(camera);
 
 buildWorld(scene);
@@ -174,10 +177,28 @@ function spectateTarget() {
   return mates[spectateIndex % mates.length];
 }
 
+let headlessView = null;
+
+// The camera sits inside the viewed fighter's head, so that fighter's
+// head gear is hidden while viewed through — otherwise the underside of
+// its own helmet fills the top of the frame — and restored afterwards.
+function setHeadVisible(c, visible) {
+  const p = c.parts;
+  if (!p) return;
+  for (const part of [p.head, p.helmet, p.visorMesh, p.brim]) {
+    if (part) part.visible = visible;
+  }
+}
+
 function poseCamera(dt) {
   let view = player;
   if (started && !player.alive && (match.phase === 'live' || match.phase === 'planted' || match.phase === 'roundEnd')) {
     view = spectateTarget() || player;
+  }
+  if (headlessView !== view) {
+    if (headlessView) setHeadVisible(headlessView, true);
+    setHeadVisible(view, false);
+    headlessView = view;
   }
   const eye = eyeHeight(view);
   camera.position.set(view.pos.x, eye, view.pos.z);
@@ -232,6 +253,29 @@ function yawFacing(fromX, fromZ, toX, toZ) {
   return Math.atan2(-(toX - fromX), -(toZ - fromZ));
 }
 
+// Aim a fighter at a point in the world, chest height by default.
+function aimAt(c, x, z, height = 1.15) {
+  const dist = Math.hypot(x - c.pos.x, z - c.pos.z);
+  c.yaw = yawFacing(c.pos.x, c.pos.z, x, z);
+  c.pitch = Math.atan2(height - eyeHeight(c), dist);
+}
+
+// Loose one real round from a fighter through the combat path, aimed at a
+// world point: tracer, muzzle flash, impact sparks and hit resolution are
+// the game's own, frozen mid-flight by the shot's still frame.
+function fireAtPoint(c, x, z, height = 1.15) {
+  aimAt(c, x, z, height);
+  tryShoot(match, fx, audio, c, match.time, match.rng);
+}
+
+// A smoke cloud staged for depth: spawned before the settle so the effects
+// update ramps its opacity, and registered in the vision model like a real
+// thrown Veil Smoke.
+function stageSmoke(x, z) {
+  fx.spawnSmoke(x, 0, z, 3.4, 30, match.time);
+  match.smokes.push({ x, z, radius: 3.4, until: match.time + 30 });
+}
+
 function stageShot(name) {
   started = true;
   hideOverlay();
@@ -240,9 +284,15 @@ function stageShot(name) {
       'A round-based tactical shooter. Plant the charge on site A or B — or defend them. Win rounds, earn money, buy rifles, armour and grenades. First to 7 rounds takes the match; sides swap at the half.',
       'Play');
     match.round = 1;
-    placeAt(player, 0, 25.5, 0.12);
-    // The teams idle at their spawns behind the menu: wardens around the
-    // player, jackals far north where the fog eats them.
+    // The title camera stands on the z = 11 band wall (top at y = 3.4):
+    // the whole yard falls away north behind the panel — the mid lane,
+    // the lamp-lit link row, both site colours, the silos and the lit
+    // skyline — so the menu doubles as the map's establishing shot.
+    player.pos.x = 0;
+    player.pos.y = 3.4;
+    player.pos.z = 11;
+    player.yaw = 0.3;
+    player.pitch = -0.04;
     const spawnsA = [[-3, 27], [3, 27], [-6, 28.5], [6, 28.5]];
     const spawnsD = [[0, -29], [-3, -28], [3, -28], [-6, -29.5]];
     match.combatants.filter((c) => c.team === 'wardens' && !c.isPlayer)
@@ -250,8 +300,13 @@ function stageShot(name) {
     match.combatants.filter((c) => c.team === 'jackals')
       .forEach((c, i) => placeAt(c, spawnsD[i % spawnsD.length][0] + (i > 3 ? 3 : 0), spawnsD[i % spawnsD.length][1], Math.PI));
     settleSteps(24);
+    match.announcements.length = 0;
+    viewModel.group.visible = false; // a title screen carries no weapon
+    player.group.visible = false; // nor the player's own figure behind it
+    camera.fov = 69;
+    camera.updateProjectionMatrix();
     camera.position.set(player.pos.x, eyeHeight(player), player.pos.z);
-    camera.rotation.set(0.02, player.yaw, 0, 'YXZ');
+    camera.rotation.set(player.pitch, player.yaw, 0, 'YXZ');
     hud.update(match, match.time, { spreadPx: 0, scoped: false, spectating: null });
     return;
   }
@@ -260,22 +315,30 @@ function stageShot(name) {
   const foes = match.combatants.filter((c) => c.team === 'jackals');
 
   if (name === 'buy') {
-    player.money = 4150;
+    // A mid-match buy: the rifle and vest are already owned, one frag is
+    // in the pouch, and what is left does not stretch to the Longbow —
+    // the menu shows owned, counted, affordable and out-of-reach states
+    // in a single frame, over the spawn plaza at dusk.
+    player.weapons.primary = { key: 'vk', mag: 30, reserve: 90 };
+    player.currentSlot = 'primary';
+    player.armorPts = 100;
+    player.grenades.frag = 1;
+    player.money = 2900;
     match.phaseTime = 9;
-    placeAt(player, 0, 27.4, 0.1);
+    placeAt(player, 0, 27.4, 0.06);
     placeAt(mates[0], -2.6, 26.4, 0.5);
     placeAt(mates[1], 2.8, 26.8, -0.4);
     placeAt(mates[2], -5.4, 28.2, 0.9);
     placeAt(mates[3], 5.6, 28.4, -0.8);
     settleSteps(10);
     match.phaseTime = 9;
+    match.announcements.length = 0;
     hud.setBuyOpen(true);
   } else if (name === 'play') {
     match.phase = 'live';
     match.round = 6;
     match.scores.wardens = 3;
     match.scores.jackals = 2;
-    match.roundTimeLeft = 74;
     player.weapons.primary = { key: 'vk', mag: 18, reserve: 60 };
     player.currentSlot = 'primary';
     player.health = 78;
@@ -283,38 +346,51 @@ function stageShot(name) {
     player.money = 2350;
     player.grenades.frag = 1;
     player.grenades.flash = 1;
-    placeAt(player, -2.8, 5.5, yawFacing(-2.8, 5.5, 1.0, -5.0), 0.01);
-    placeAt(mates[0], -4.5, 9.5, yawFacing(-4.5, 9.5, 0, -4));
-    placeAt(mates[1], 3.4, 10.5, yawFacing(3.4, 10.5, 8, -2));
-    placeAt(mates[2], -8.5, 1.5, yawFacing(-8.5, 1.5, -16, -6));
-    placeAt(mates[3], 9.5, 4.5, yawFacing(9.5, 4.5, 16, -6));
+    // The cover frame: a mid-lane firefight at seven metres. The player
+    // holds the south side of the z = -1 door; a Jackal runner crosses
+    // the link row through the doorway, a second Jackal just north of
+    // the door fires back down the lane at the player, and a Warden mate
+    // shoots over the player's shoulder — tracers both ways, sparks on
+    // the runner, a smoke wall standing off to the east for depth.
+    placeAt(player, -2.6, 2.6, yawFacing(-2.6, 2.6, 1.8, -2.6), 0.01);
+    mates[0].weapons.primary = { key: 'vk', mag: 24, reserve: 60 };
+    mates[0].currentSlot = 'primary';
+    placeAt(mates[0], -5.6, 6.8, yawFacing(-5.6, 6.8, 1.8, -2.6));
+    placeAt(mates[1], 4.2, 7.5, yawFacing(4.2, 7.5, 8, -2));
+    placeAt(mates[2], -16, -6, yawFacing(-16, -6, -17, -19));
+    placeAt(mates[3], 14, -8, yawFacing(14, -8, 17, -19));
     const runner = foes[0];
-    placeAt(runner, 1.0, -5.0, yawFacing(1.0, -5.0, 9, -7));
+    placeAt(runner, 1.8, -2.6, yawFacing(1.8, -2.6, 9, -7));
     runner.vel.x = 3.0;
     runner.vel.z = -0.6;
-    placeAt(foes[1], -0.5, -9.5, yawFacing(-0.5, -9.5, -2.8, 5.5));
+    foes[1].weapons.primary = { key: 'raptor', mag: 20, reserve: 60 };
+    foes[1].currentSlot = 'primary';
+    placeAt(foes[1], 0.5, -7.0, yawFacing(0.5, -7.0, -2.6, 2.6));
     placeAt(foes[2], -13, -15, yawFacing(-13, -15, -17, -19));
     placeAt(foes[3], 21, -22, yawFacing(21, -22, 17, -19));
     foes[4].alive = false;
     foes[4].deathAt = match.time - 2;
     placeAt(foes[4], -20, -20, 0);
     match.killfeed.push({ killer: 'YOU', killerTeam: 'wardens', victim: foes[4].callsign, victimTeam: 'jackals', weapon: 'vk', headshot: true, at: match.time - 1.2 });
-    settleSteps(6);
+    // Smoke east of the door, clear of the sightline: depth for the
+    // frame and the game's own sight-block, ramped up during the settle.
+    stageSmoke(6.5, -1.5);
+    settleSteps(30);
+    match.roundTimeLeft = 74;
     runner.vel.x = 3.0;
     runner.vel.z = -0.6;
-    // Post-settle: drop the stale round banner, then fire one live round at
-    // the runner so the frozen frame carries tracer, flash and hitmarker.
+    // Post-settle: drop the stale round banner, then trade real rounds —
+    // the second Jackal down the lane at the player, the mate and the
+    // player onto the runner — so the frozen frame carries live tracers,
+    // impact sparks and the hitmarker.
     match.announcements.length = 0;
-    const dist = Math.hypot(runner.pos.x - player.pos.x, runner.pos.z - player.pos.z);
-    placeAt(player, -2.8, 5.5, yawFacing(-2.8, 5.5, runner.pos.x, runner.pos.z),
-      Math.atan2(1.25 - eyeHeight(player), dist));
-    match.lastHitAt = -10;
-    tryShoot(match, fx, audio, player, match.time, match.rng);
-    match.lastHitAt = match.time - 0.04;
-    // Age the effects past the muzzle flash entirely: in a frozen frame its
-    // point light would otherwise hang at low intensity forever (and wash
-    // the sky under software rendering). Impact sparks live on.
-    fx.update(0.06, match.time + 0.06, () => {});
+    fireAtPoint(foes[1], player.pos.x + 1.3, player.pos.z, 1.25);
+    fireAtPoint(mates[0], runner.pos.x, runner.pos.z, 1.1);
+    fireAtPoint(player, runner.pos.x, runner.pos.z, 1.25);
+    match.lastHitAt = match.time - 0.02;
+    // Age the effects a breath — not past them: the muzzle light decays
+    // to a warm glow, the tracers (50 ms) and impact sparks live on.
+    fx.update(0.04, match.time + 0.04, () => {});
   } else if (name === 'plant') {
     match.phase = 'planted';
     match.round = 5;
@@ -331,28 +407,36 @@ function stageShot(name) {
     match.bomb.x = 16.4;
     match.bomb.z = -18.2;
     match.bomb.timer = 23.5;
-    placeAt(player, 12.3, -14.6, yawFacing(12.3, -14.6, 16.4, -18.2), 0.02);
+    // The objective frame, close: the player covers site A's charge from
+    // the site's south side while a Jackal kneels on it, halfway through
+    // a defuse — the channel bar, the blinking charge and the site ring
+    // all in one frame, a second Jackal pushing the east door behind.
+    placeAt(player, 16.9, -23.0, yawFacing(16.9, -23.0, 17.4, -17.3), -0.06);
     const defuser = foes[1];
-    placeAt(defuser, 16.9, -17.6, yawFacing(16.9, -17.6, 16.4, -18.2), -0.3);
+    placeAt(defuser, 17.4, -17.3, yawFacing(17.4, -17.3, 16.4, -18.2), -0.15);
     defuser.crouch = true;
     defuser.crouchAmt = 1;
     placeAt(foes[0], 22.5, -12.5, yawFacing(22.5, -12.5, 17, -19));
     foes[0].vel.x = -2.6;
     foes[0].vel.z = -1.4;
-    placeAt(foes[2], 12.2, -18.2, yawFacing(12.2, -18.2, 17, -19));
-    placeAt(mates[0], 13.2, -24.5, yawFacing(13.2, -24.5, 17, -19));
+    placeAt(foes[2], 24.5, -20.5, yawFacing(24.5, -20.5, 17, -19));
+    placeAt(mates[0], 12.0, -27.5, yawFacing(12.0, -27.5, 17, -19));
     placeAt(mates[1], 23.5, -23.5, yawFacing(23.5, -23.5, 17, -19));
     mates[2].alive = false;
     mates[2].deathAt = match.time - 3;
     placeAt(mates[2], 18, -10, 0);
+    match.killfeed.push({ killer: foes[0].callsign, killerTeam: 'jackals', victim: mates[2].callsign, victimTeam: 'wardens', weapon: 'raptor', headshot: false, at: match.time - 0.8 });
     settleSteps(6);
     foes[0].vel.x = -2.6;
     foes[0].vel.z = -1.4;
     defuser.crouchAmt = 1;
     // The director clears an unattended defuse while settling, so the
     // channel state is applied after the settle, banner queue emptied.
+    // The player has just taken a hit covering the site: the damage
+    // vignette is the game's own, driven by lastHurtAt.
     match.bomb.defuserId = defuser.id;
-    match.bomb.defuseProgress = 0.35;
+    match.bomb.defuseProgress = 0.55;
+    player.lastHurtAt = match.time - 0.15;
     match.announcements.length = 0;
   }
   poseCamera(0.016);

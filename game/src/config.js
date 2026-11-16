@@ -1,10 +1,13 @@
 // COPPERLINE — shared tuning: palette, weapons, grenades, economy, round timings.
 // Every number the rest of the game balances against lives here, in one place.
 
-// Dusk foundry palette: warm concrete and rust against a teal/amber team split.
+// Dusk foundry palette: a low amber sun against deep blue shadow, warm
+// concrete and rust in the yard, and a saturated teal/amber team split that
+// still reads at screenshot distance.
 export const PALETTE = {
-  sky: 0x2e3d4d,        // dusk blue the fog fades into
-  fog: 0x3a4a56,
+  sky: 0x2e3d4d,        // fallback clear colour behind the sky dome
+  fog: 0x77624f,        // warm dusk haze the yard fades into
+  horizon: 0xe08a4e,    // the sun band the sky dome is painted around
   ground: 0x8a7f6d,     // worn concrete-sand
   groundDark: 0x6f6455,
   wall: 0x9c9181,       // concrete block
@@ -13,12 +16,16 @@ export const PALETTE = {
   crateDark: 0x7d5527,
   metal: 0x707880,      // containers and pipework
   rust: 0xb0562f,       // rust accent on site A side
-  teal: 0x2fa8a0,       // Wardens (player team)
+  lamp: 0xffb45e,       // yard lamp glow at dusk
+  containerRed: 0x9c4030,
+  containerTeal: 0x2a6f6a,
+  containerBlue: 0x3d5a74,
+  teal: 0x2fd8c8,       // Wardens (player team)
   tealDark: 0x1d6f6a,
-  amber: 0xe08a2e,      // Jackals (enemy team)
+  amber: 0xf59a2e,      // Jackals (enemy team)
   amberDark: 0x9c5c1c,
-  siteA: 0xd86a3a,
-  siteB: 0x3a9ad8,
+  siteA: 0xe86a2a,
+  siteB: 0x2a9ae8,
   white: 0xf2ede2,
 };
 

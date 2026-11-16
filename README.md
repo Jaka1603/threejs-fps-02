@@ -32,6 +32,17 @@ sides swap after round 6, and a full economy drives a buy phase every round.
   teal/amber team split), procedural WebAudio for every sound, pooled
   effects (tracers, impacts, muzzle light, smoke) with no per-frame
   allocation in the hot loop.
+- **Art direction** — a painted canvas sky dome (sunset gradient, sun disc
+  and halo, cloud wisps) over a lit skyline silhouette, ACES filmic tone
+  mapping, and fully procedural canvas textures: formwork-streaked walls,
+  a worn painted ground with lane lines and site aprons, stencilled
+  containers and crates. Yard floodlights and colour-coded site doors
+  make both bomb sites readable at a glance; figures wear visors, team
+  shoulder pads and chest stripes so friend and foe read instantly.
+- **First-person camera fix** — the viewed fighter's own head gear is
+  hidden while the camera sits at its eyes (and restored when the view
+  moves on), so neither the player's nor a spectated bot's helmet can
+  block the top of the frame.
 
 ## Architecture
 

@@ -113,10 +113,11 @@ function nameSprite(callsign, colorHex) {
 export function buildFigure(c, scene, showName) {
   const group = new THREE.Group();
   const teamColor = TEAMS[c.team].color;
-  const suit = new THREE.MeshStandardMaterial({ color: c.team === 'wardens' ? 0x3d4a4a : 0x4a4038, roughness: 0.9 });
-  const teamMat = new THREE.MeshStandardMaterial({ color: teamColor, roughness: 0.75 });
+  const suit = new THREE.MeshStandardMaterial({ color: c.team === 'wardens' ? 0x46565c : 0x5a4636, roughness: 0.9 });
+  const teamMat = new THREE.MeshStandardMaterial({ color: teamColor, roughness: 0.7 });
   const dark = new THREE.MeshStandardMaterial({ color: 0x22252a, roughness: 0.6, metalness: 0.35 });
   const skin = new THREE.MeshStandardMaterial({ color: 0xc9a183, roughness: 0.8 });
+  const visor = new THREE.MeshStandardMaterial({ color: 0x14181d, roughness: 0.25, metalness: 0.6 });
 
   const legs = new THREE.Group();
   const legGeo = new THREE.BoxGeometry(0.17, 0.82, 0.2);
@@ -137,6 +138,24 @@ export function buildFigure(c, scene, showName) {
   head.position.y = 0.82;
   const helmet = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.14, 0.32), teamMat);
   helmet.position.y = 0.95;
+  // A dark visor strip across the face and a helmet brim: the head reads
+  // as tactical kit, not a bare block, at screenshot distance.
+  const visorMesh = new THREE.Mesh(new THREE.BoxGeometry(0.27, 0.09, 0.03), visor);
+  visorMesh.position.set(0, 0.86, -0.14);
+  const brim = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.04, 0.38), teamMat);
+  brim.position.y = 0.9;
+  // Team-colour shoulder pads and a chest stripe over the dark vest, plus
+  // a backpack block — the silhouette carries the team colour front, side
+  // and back. All inside the chest hit volume's footprint.
+  const padGeo = new THREE.BoxGeometry(0.13, 0.1, 0.3);
+  const padL = new THREE.Mesh(padGeo, teamMat);
+  padL.position.set(-0.24, 0.58, 0);
+  const padR = new THREE.Mesh(padGeo, teamMat);
+  padR.position.set(0.24, 0.58, 0);
+  const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.09, 0.02), teamMat);
+  stripe.position.set(0, 0.42, -0.19);
+  const pack = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.46, 0.14), dark);
+  pack.position.set(0, 0.32, 0.22);
   const armGeo = new THREE.BoxGeometry(0.13, 0.52, 0.13);
   const armL = new THREE.Mesh(armGeo, suit);
   armL.position.set(-0.36, 0.3, 0.18);
@@ -150,14 +169,14 @@ export function buildFigure(c, scene, showName) {
   gunBarrel.position.set(0, 0.04, -0.45);
   gun.add(gunBody, gunBarrel);
   gun.position.set(0.18, 0.42, -0.3);
-  upper.add(torso, vest, head, helmet, armL, armR, gun);
+  upper.add(torso, vest, head, helmet, visorMesh, brim, padL, padR, stripe, pack, armL, armR, gun);
   group.add(upper);
 
   group.traverse((m) => { if (m.isMesh) { m.castShadow = true; } });
   if (showName) group.add(nameSprite(c.callsign, teamColor));
   scene.add(group);
   c.group = group;
-  c.parts = { legs, legL, legR, upper, torso, teamMat, gun };
+  c.parts = { legs, legL, legR, upper, torso, teamMat, gun, head, helmet, visorMesh, brim };
   return group;
 }
 
@@ -207,12 +226,15 @@ export function buildViewModel(camera) {
   const models = {};
   for (const key of Object.keys(VIEW_SPECS)) {
     const spec = VIEW_SPECS[key];
-    const mat = new THREE.MeshStandardMaterial({ color: 0x474e57, roughness: 0.42, metalness: 0.5 });
-    const accent = new THREE.MeshStandardMaterial({ color: 0xb0562f, roughness: 0.5, metalness: 0.3 });
+    const mat = new THREE.MeshStandardMaterial({ color: 0x3a4046, roughness: 0.38, metalness: 0.55 });
+    const accent = new THREE.MeshStandardMaterial({ color: 0x2fd8c8, roughness: 0.45, metalness: 0.3 });
+    const gripMat = new THREE.MeshStandardMaterial({ color: 0x22252a, roughness: 0.7 });
     const m = new THREE.Group();
     const body = new THREE.Mesh(new THREE.BoxGeometry(0.075, spec.h, spec.len), mat);
     const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.078, spec.h * 0.3, spec.len * 0.4), accent);
     stripe.position.set(0, spec.h * 0.18, spec.len * 0.12);
+    const foregrip = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.09, 0.05), gripMat);
+    foregrip.position.set(0, -spec.h * 0.62, -spec.len * 0.28);
     const barrel = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, spec.len * 0.4), mat);
     barrel.position.set(0, spec.h * 0.22, -spec.len * 0.62);
     const mag = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.16, 0.09), mat);
@@ -220,7 +242,7 @@ export function buildViewModel(camera) {
     mag.rotation.x = 0.25;
     const sight = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.06, 0.03), mat);
     sight.position.set(0, spec.h * 0.65, -0.05);
-    m.add(body, stripe, barrel, mag, sight);
+    m.add(body, stripe, barrel, mag, sight, foregrip);
     if (key === 'longbow') {
       const scope = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.028, 0.16, 10), mat);
       scope.rotation.x = Math.PI / 2;

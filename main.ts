@@ -11,8 +11,8 @@
 // Outside the grader's sandbox, MAKEFUN_OUTPUT_DIR stands in for /output:
 //   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
 
-import { cpSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { cpSync, existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildDossier } from './vendor/makefun-threejs.ts';
 
@@ -39,3 +39,25 @@ writeFileSync(
     game_max_bytes: 50331648,
   }),
 );
+
+// A hand-in manifest on stdout: every file that was handed in, with its
+// size, so a build log shows at a glance that the game, the four
+// screenshots and the dossier all made it — and what each one weighs
+// against the caps above.
+function listFiles(dir, prefix = '') {
+  const rows = [];
+  for (const name of readdirSync(dir).sort()) {
+    const path = join(dir, name);
+    if (statSync(path).isDirectory()) rows.push(...listFiles(path, `${prefix}${name}/`));
+    else rows.push([`${prefix}${name}`, statSync(path).size]);
+  }
+  return rows;
+}
+
+const manifest = listFiles(out);
+let totalBytes = 0;
+for (const [name, size] of manifest) {
+  totalBytes += size;
+  console.log(`  ${name} — ${size} bytes`);
+}
+console.log(`COPPERLINE handed in: ${manifest.length} files, ${totalBytes} bytes total.`);

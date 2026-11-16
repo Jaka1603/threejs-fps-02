@@ -247,6 +247,7 @@ export function resolveGrenade(match, fx, audio, slot, now) {
   if (kind === 'frag') {
     const def = GRENADES.frag;
     fx.impact(new THREE.Vector3(x, y + 0.2, z), new THREE.Vector3(0, 1, 0), 26, 3.2, now, 0xffa050);
+    fx.muzzle(new THREE.Vector3(x, y + 0.45, z), now); // the burst lights the yard for a frame
     audio.frag();
     emitNoise(match, x, z, 34, slot.team, 'explosion');
     for (const c of match.combatants) {

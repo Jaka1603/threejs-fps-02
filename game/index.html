@@ -101,6 +101,7 @@
   .buy-key { font-family: var(--font-num); color: var(--muted); border: 1px solid var(--hairline); border-radius: 3px; text-align: center; font-size: 12px; padding: 1px 0; }
   .buy-name { font-size: 13px; }
   .buy-price { font-family: var(--font-num); font-size: 13px; color: #ffd97a; }
+  .buy-stat { grid-column: 2 / 4; font-size: 10px; letter-spacing: 0.12em; color: var(--muted); font-family: var(--font-num); }
   .buy-state { grid-column: 2 / 4; font-size: 10px; letter-spacing: 0.18em; color: var(--teal); min-height: 12px; }
   .buy-item.broke .buy-price { color: var(--danger); }
   .buy-item.owned { border-color: rgba(57,216,205,.5); }
@@ -115,8 +116,13 @@
   #scoreboard tr.wardens td:first-child { color: var(--teal); }
   #scoreboard tr.jackals td:first-child { color: var(--amber); }
 
+  /* Cinematic grade: a soft vignette and a warm toe, over the 3D view only */
+  #grade { position: fixed; inset: 0; pointer-events: none; background:
+    linear-gradient(180deg, rgba(16,20,28,.14) 0%, transparent 18%, transparent 82%, rgba(12,8,6,.22) 100%),
+    radial-gradient(ellipse at center, transparent 58%, rgba(10,8,8,.30) 100%); }
+
   /* Menu / pause / end overlay */
-  .overlay { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; background: linear-gradient(100deg, rgba(10,13,16,.88) 30%, rgba(10,13,16,.35)); }
+  .overlay { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; background: linear-gradient(100deg, rgba(10,13,16,.80) 26%, rgba(10,13,16,.08) 78%); }
   .overlay[hidden] { display: none; }
   .panel { width: min(520px, 100%); }
   .panel .kicker { font-size: 12px; letter-spacing: 0.34em; color: var(--amber); margin-bottom: 8px; }
@@ -171,6 +177,7 @@
     <table><thead><tr><th>Fighter</th><th>K</th><th>D</th><th>Money</th><th>Weapon</th></tr></thead><tbody id="scoreboard-body"></tbody></table>
   </div>
 </div>
+<div id="grade"></div>
 <div id="damage-vignette"></div>
 <div id="flash-overlay"></div>
 <div id="scope-overlay"></div>

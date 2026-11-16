@@ -6,16 +6,21 @@ import { ARMOR_PRICE, GRENADES, KIT_PRICE, ROUND, WEAPONS } from './config.js';
 import { BOXES, SITES } from './map.js';
 import { currentWeapon } from './actors.js';
 
+function weaponStat(key) {
+  const w = WEAPONS[key];
+  return `DMG ${w.damage} · ${w.rpm} RPM · MAG ${w.mag}`;
+}
+
 export const BUY_CATALOG = [
-  { key: 'raptor', hotkey: 'Digit1', label: 'Raptor SMG', price: WEAPONS.raptor.price },
-  { key: 'breacher', hotkey: 'Digit2', label: 'Breacher SG', price: WEAPONS.breacher.price },
-  { key: 'vk', hotkey: 'Digit3', label: 'VK-4 Rifle', price: WEAPONS.vk.price },
-  { key: 'longbow', hotkey: 'Digit4', label: 'Longbow DMR', price: WEAPONS.longbow.price },
-  { key: 'armor', hotkey: 'Digit5', label: 'Vest + Helmet', price: ARMOR_PRICE },
-  { key: 'kit', hotkey: 'Digit6', label: 'Defuse Kit', price: KIT_PRICE },
-  { key: 'frag', hotkey: 'Digit7', label: 'Shard Frag', price: GRENADES.frag.price },
-  { key: 'flash', hotkey: 'Digit8', label: 'Blind Flash', price: GRENADES.flash.price },
-  { key: 'smoke', hotkey: 'Digit9', label: 'Veil Smoke', price: GRENADES.smoke.price },
+  { key: 'raptor', hotkey: 'Digit1', label: 'Raptor SMG', price: WEAPONS.raptor.price, stat: weaponStat('raptor') },
+  { key: 'breacher', hotkey: 'Digit2', label: 'Breacher SG', price: WEAPONS.breacher.price, stat: `${weaponStat('breacher')} · 7 PELLETS` },
+  { key: 'vk', hotkey: 'Digit3', label: 'VK-4 Rifle', price: WEAPONS.vk.price, stat: weaponStat('vk') },
+  { key: 'longbow', hotkey: 'Digit4', label: 'Longbow DMR', price: WEAPONS.longbow.price, stat: `${weaponStat('longbow')} · SCOPED` },
+  { key: 'armor', hotkey: 'Digit5', label: 'Vest + Helmet', price: ARMOR_PRICE, stat: 'HALVES CHEST + HEAD DAMAGE' },
+  { key: 'kit', hotkey: 'Digit6', label: 'Defuse Kit', price: KIT_PRICE, stat: 'DEFUSE 8S → 4S' },
+  { key: 'frag', hotkey: 'Digit7', label: 'Shard Frag', price: GRENADES.frag.price, stat: `UP TO ${GRENADES.frag.damage} DAMAGE` },
+  { key: 'flash', hotkey: 'Digit8', label: 'Blind Flash', price: GRENADES.flash.price, stat: 'BLINDS ON SIGHTLINE' },
+  { key: 'smoke', hotkey: 'Digit9', label: 'Veil Smoke', price: GRENADES.smoke.price, stat: `${GRENADES.smoke.duration}S SIGHT BLOCK` },
 ];
 
 const $ = (id) => document.getElementById(id);
@@ -47,7 +52,7 @@ export function createHud(onBuy) {
     const button = document.createElement('button');
     button.className = 'buy-item';
     button.type = 'button';
-    button.innerHTML = `<span class="buy-key">${item.hotkey.slice(-1)}</span><span class="buy-name">${item.label}</span><span class="buy-price">$${item.price}</span><span class="buy-state"></span>`;
+    button.innerHTML = `<span class="buy-key">${item.hotkey.slice(-1)}</span><span class="buy-name">${item.label}</span><span class="buy-price">$${item.price}</span><span class="buy-stat">${item.stat}</span><span class="buy-state"></span>`;
     button.addEventListener('click', () => onBuy(item.key));
     el.buyItems.appendChild(button);
     buyButtons.set(item.key, button);

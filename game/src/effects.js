@@ -12,10 +12,13 @@ const MAX_GRENADES = 12;
 
 export function createEffects(scene) {
   // Tracers: one stretched additive quad per shot, recycled round-robin.
-  const tracerGeo = new THREE.BoxGeometry(0.02, 0.02, 1);
+  const tracerGeo = new THREE.BoxGeometry(0.022, 0.022, 1);
   const tracers = [];
   for (let i = 0; i < MAX_TRACERS; i += 1) {
-    const mat = new THREE.MeshBasicMaterial({ color: 0xffe6b0, transparent: true, opacity: 0 });
+    const mat = new THREE.MeshBasicMaterial({
+      color: 0xffe6b0, transparent: true, opacity: 0,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    });
     const mesh = new THREE.Mesh(tracerGeo, mat);
     mesh.visible = false;
     scene.add(mesh);
@@ -31,7 +34,7 @@ export function createEffects(scene) {
   for (let i = 0; i < 12; i += 1) {
     const mat = new THREE.SpriteMaterial({ map: flashTex, color: 0xffd9a0, transparent: true, opacity: 0, depthWrite: false });
     const sprite = new THREE.Sprite(mat);
-    sprite.scale.set(0.55, 0.55, 1);
+    sprite.scale.set(0.72, 0.72, 1);
     sprite.visible = false;
     scene.add(sprite);
     flashes.push({ sprite, mat, until: 0 });
@@ -126,7 +129,7 @@ export function createEffects(scene) {
       slot.mesh.scale.set(1, 1, len);
       slot.mesh.lookAt(to);
       slot.mat.color.setHex(color);
-      slot.mat.opacity = 0.85;
+      slot.mat.opacity = 0.95;
       slot.mesh.visible = true;
       slot.until = now + 0.05;
     },
@@ -169,7 +172,7 @@ export function createEffects(scene) {
     spawnSmoke(x, y, z, radius, duration, now) {
       const sprites = [];
       for (let i = 0; i < 11; i += 1) {
-        const mat = new THREE.SpriteMaterial({ map: smokeTex, transparent: true, opacity: 0, depthWrite: false });
+        const mat = new THREE.SpriteMaterial({ map: smokeTex, color: 0xb4b8bc, transparent: true, opacity: 0, depthWrite: false });
         const sprite = new THREE.Sprite(mat);
         const angle = (i / 11) * Math.PI * 2;
         sprite.position.set(x + Math.cos(angle) * radius * 0.45, y + 0.8 + (i % 3) * 0.75, z + Math.sin(angle) * radius * 0.45);
