@@ -2,7 +2,7 @@
 // who a fighter is, what they carry, and how their body is posed. Shooting is
 // combat.js, decisions are bots.js / player.js; this module keeps the body.
 import * as THREE from 'three';
-import { CALLSIGNS, ECONOMY, PALETTE, TEAMS, WEAPONS } from './config.js';
+import { CALLSIGNS, ECONOMY, TEAMS, WEAPONS } from './config.js';
 
 export const EYE_STAND = 1.62;
 export const EYE_CROUCH = 1.14;
@@ -180,9 +180,8 @@ export function buildFigure(c, scene, showName) {
   return group;
 }
 
-// Poses a figure from its combatant state: position, facing, aim pitch on the
-// upper body, leg swing from distance travelled, crouch compression, the
-// death fall, and the white hit flash fading out.
+// Poses a figure from its combatant state: position, facing, aim pitch,
+// leg swing, crouch compression, the death fall and the hit flash.
 export function poseActor(c, dt, now) {
   const g = c.group;
   if (!g) return;
@@ -204,15 +203,21 @@ export function poseActor(c, dt, now) {
   p.upper.position.y = 0.82 - c.crouchAmt * 0.42;
   p.upper.rotation.x = c.pitch * 0.7;
   p.legs.rotation.x = c.crouchAmt * 0.5;
+  // A fresh hit snaps the upper body back: the flinch decays inside a
+  // third of a second, and in a still it reads as a fighter mid-hit.
+  const flinch = Math.max(0, 1 - (now - c.lastHurtAt) / 0.3);
+  if (flinch > 0) {
+    p.upper.rotation.x -= flinch * 0.16;
+    p.upper.rotation.z = Math.sin(flinch * 10) * 0.05 * flinch;
+  } else if (p.upper.rotation.z) p.upper.rotation.z = 0;
   if (c.hitFlash > 0) {
     c.hitFlash = Math.max(0, c.hitFlash - dt * 5);
     p.teamMat.emissive.setRGB(c.hitFlash * 0.9, c.hitFlash * 0.9, c.hitFlash * 0.9);
   }
 }
 
-// The player's own weapon, parented to the camera: a blocky rifle/SMG/pistol
-// per weapon key, with a muzzle point for flashes and tracers. Recoil and bob
-// are applied by main.js through userData offsets.
+// The player's own weapon, parented to the camera: a blocky model per
+// weapon key, with a muzzle point for flashes and tracers.
 const VIEW_SPECS = {
   p9: { len: 0.34, h: 0.13, color: 0x2c2f33 },
   raptor: { len: 0.52, h: 0.17, color: 0x33373d },
@@ -268,5 +273,3 @@ export function setViewWeapon(vm, key) {
   vm.current = key;
   for (const k of Object.keys(vm.models)) vm.models[k].visible = k === key;
 }
-
-export { PALETTE };

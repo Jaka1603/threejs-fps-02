@@ -80,7 +80,6 @@ export function createAudio() {
     frag() { burst({ dur: 0.7, freq: 2600, gain: 0.8, sweepTo: 90 }); tone({ dur: 0.5, freq: 120, gain: 0.5, type: 'sine', sweepTo: 38 }); },
     flash() { tone({ dur: 0.35, freq: 3400, gain: 0.2, type: 'sine', sweepTo: 2600 }); },
     smokePop() { burst({ dur: 0.3, freq: 800, gain: 0.22, sweepTo: 300 }); },
-    beep(fast) { tone({ dur: 0.05, freq: 1240, gain: 0.13 }); if (fast) tone({ at: 0.09, dur: 0.05, freq: 1240, gain: 0.13 }); },
     plantDone() { tone({ dur: 0.09, freq: 880, gain: 0.16 }); tone({ at: 0.11, dur: 0.12, freq: 1320, gain: 0.16 }); },
     defuseDone() { tone({ dur: 0.09, freq: 1320, gain: 0.16 }); tone({ at: 0.11, dur: 0.12, freq: 880, gain: 0.16 }); },
     explosion() { burst({ dur: 1.4, freq: 3000, gain: 1, sweepTo: 60 }); tone({ dur: 1.1, freq: 96, gain: 0.7, type: 'sine', sweepTo: 30 }); },

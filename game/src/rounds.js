@@ -1,7 +1,6 @@
 // The round director: owns the match flow — buy phase, live round, the
-// planted charge, round and match results — plus the economy that ties them
-// together and every fighter's purchases. Combat happens elsewhere; this
-// module decides what a round is and when it is over.
+// planted charge, round and match results — plus the economy and every
+// fighter's purchases. Combat happens elsewhere.
 import { ARMOR_PRICE, ECONOMY, GRENADES, KIT_PRICE, ROUND, WEAPONS } from './config.js';
 import { SITES, SPAWNS } from './map.js';
 import { buildFigure, createCombatant, currentWeapon } from './actors.js';

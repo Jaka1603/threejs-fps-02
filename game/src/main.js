@@ -1,8 +1,7 @@
 // COPPERLINE — boot and the one loop. A fixed 60 Hz simulation (director,
-// player, bots, effects) feeds a render at display rate; the camera, view
+// player, bots, effects) feeds a render at display rate; camera, view
 // model and HUD are posed from simulation state every frame. The ?shot=
-// entry points stage deterministic scenes for the maker's screenshots: they
-// set up real match state, settle it, render twice and freeze.
+// entry points stage deterministic scenes for the maker's screenshots.
 import * as THREE from 'three';
 import { PALETTE, ROUND, WEAPONS } from './config.js';
 import { Rng } from './rng.js';
@@ -167,6 +166,7 @@ function viewState() {
   return {
     spreadPx: player.alive && held ? spreadFor(player, WEAPONS[held.key]) * 620 : 0,
     scoped: !!scoped,
+    camera,
     spectating: started && !player.alive && (match.phase === 'live' || match.phase === 'planted') ? spectateTarget()?.callsign : null,
   };
 }
@@ -204,6 +204,7 @@ function poseCamera(dt) {
   camera.position.set(view.pos.x, eye, view.pos.z);
   const kick = view.isPlayer ? (player.viewKick || 0) : 0;
   camera.rotation.set(view.pitch + kick, view.yaw, 0, 'YXZ');
+  camera.updateMatrixWorld(); // the HUD projects damage numbers with this camera
 
   const held = currentWeapon(player);
   const wantFov = viewState().scoped ? 27 : input.aiming && player.alive ? 58 : 74;
@@ -233,9 +234,8 @@ function poseCamera(dt) {
 }
 
 // ---- Screenshot staging -----------------------------------------------------
-// Each shot builds a real match in a named state, settles the simulation so
-// poses are natural, then freezes on a composed frame. Deterministic in the
-// seed: the same URL always renders the same picture.
+// Each shot builds a real match in a named state, settles the simulation
+// so poses are natural, then freezes on a composed frame.
 
 function settleSteps(n) {
   for (let i = 0; i < n; i += 1) step(FIXED_STEP);
@@ -268,9 +268,8 @@ function fireAtPoint(c, x, z, height = 1.15) {
   tryShoot(match, fx, audio, c, match.time, match.rng);
 }
 
-// A smoke cloud staged for depth: spawned before the settle so the effects
-// update ramps its opacity, and registered in the vision model like a real
-// thrown Veil Smoke.
+// A smoke cloud staged for depth: spawned before the settle so the
+// effects update ramps its opacity, registered like a real thrown smoke.
 function stageSmoke(x, z) {
   fx.spawnSmoke(x, 0, z, 3.4, 30, match.time);
   match.smokes.push({ x, z, radius: 3.4, until: match.time + 30 });
@@ -285,9 +284,8 @@ function stageShot(name) {
       'Play');
     match.round = 1;
     // The title camera stands on the z = 11 band wall (top at y = 3.4):
-    // the whole yard falls away north behind the panel — the mid lane,
-    // the lamp-lit link row, both site colours, the silos and the lit
-    // skyline — so the menu doubles as the map's establishing shot.
+    // the whole yard falls away north behind the panel — mid lane, link
+    // row, both site colours, the crane, the silos and the lit skyline.
     player.pos.x = 0;
     player.pos.y = 3.4;
     player.pos.z = 11;
@@ -346,26 +344,25 @@ function stageShot(name) {
     player.money = 2350;
     player.grenades.frag = 1;
     player.grenades.flash = 1;
-    // The cover frame: a mid-lane firefight at seven metres. The player
+    // The cover frame: a mid-lane firefight at six metres. The player
     // holds the south side of the z = -1 door; a Jackal runner crosses
-    // the link row through the doorway, a second Jackal just north of
-    // the door fires back down the lane at the player, and a Warden mate
-    // shoots over the player's shoulder — tracers both ways, sparks on
-    // the runner, a smoke wall standing off to the east for depth.
-    placeAt(player, -2.6, 2.6, yawFacing(-2.6, 2.6, 1.8, -2.6), 0.01);
+    // the link row through the doorway, a second Jackal north of the
+    // door fires back, a Warden mate shoots over the player's shoulder,
+    // and the crane's hanging container rides the top of the frame.
+    placeAt(player, -2.2, 2.4, yawFacing(-2.2, 2.4, 1.7, -2.3), 0.01);
     mates[0].weapons.primary = { key: 'vk', mag: 24, reserve: 60 };
     mates[0].currentSlot = 'primary';
-    placeAt(mates[0], -5.6, 6.8, yawFacing(-5.6, 6.8, 1.8, -2.6));
+    placeAt(mates[0], -4.8, 5.6, yawFacing(-4.8, 5.6, 1.7, -2.3));
     placeAt(mates[1], 4.2, 7.5, yawFacing(4.2, 7.5, 8, -2));
     placeAt(mates[2], -16, -6, yawFacing(-16, -6, -17, -19));
     placeAt(mates[3], 14, -8, yawFacing(14, -8, 17, -19));
     const runner = foes[0];
-    placeAt(runner, 1.8, -2.6, yawFacing(1.8, -2.6, 9, -7));
+    placeAt(runner, 1.7, -2.3, yawFacing(1.7, -2.3, 9, -7));
     runner.vel.x = 3.0;
     runner.vel.z = -0.6;
     foes[1].weapons.primary = { key: 'raptor', mag: 20, reserve: 60 };
     foes[1].currentSlot = 'primary';
-    placeAt(foes[1], 0.5, -7.0, yawFacing(0.5, -7.0, -2.6, 2.6));
+    placeAt(foes[1], 0.5, -7.0, yawFacing(0.5, -7.0, -2.2, 2.4));
     placeAt(foes[2], -13, -15, yawFacing(-13, -15, -17, -19));
     placeAt(foes[3], 21, -22, yawFacing(21, -22, 17, -19));
     foes[4].alive = false;
@@ -374,23 +371,30 @@ function stageShot(name) {
     match.killfeed.push({ killer: 'YOU', killerTeam: 'wardens', victim: foes[4].callsign, victimTeam: 'jackals', weapon: 'vk', headshot: true, at: match.time - 1.2 });
     // Smoke east of the door, clear of the sightline: depth for the
     // frame and the game's own sight-block, ramped up during the settle.
-    stageSmoke(6.5, -1.5);
+    stageSmoke(8.0, 0.5);
     settleSteps(30);
     match.roundTimeLeft = 74;
     runner.vel.x = 3.0;
     runner.vel.z = -0.6;
-    // Post-settle: drop the stale round banner, then trade real rounds —
-    // the second Jackal down the lane at the player, the mate and the
-    // player onto the runner — so the frozen frame carries live tracers,
-    // impact sparks and the hitmarker.
+    // Post-settle: drop the stale round banner, then trade real rounds.
+    // The player's two-round burst goes first and ages past its own
+    // muzzle flash — a flash sprite half a metre from the lens would
+    // swallow the runner whole — while its casings, sparks, dust and
+    // damage numbers live on; the mate and the second Jackal fire last,
+    // so the frame keeps their tracers and distant flashes instead.
     match.announcements.length = 0;
-    fireAtPoint(foes[1], player.pos.x + 1.3, player.pos.z, 1.25);
-    fireAtPoint(mates[0], runner.pos.x, runner.pos.z, 1.1);
     fireAtPoint(player, runner.pos.x, runner.pos.z, 1.25);
+    fx.update(0.045, match.time + 0.045, () => {});
+    match.time += 0.045;
+    player.nextShotAt = 0;
+    fireAtPoint(player, runner.pos.x, runner.pos.z, 1.3);
+    fx.update(0.06, match.time + 0.06, () => {});
+    match.time += 0.06;
+    fireAtPoint(mates[0], runner.pos.x, runner.pos.z, 1.1);
+    fireAtPoint(foes[1], player.pos.x + 2.1, player.pos.z, 1.25);
+    for (const c of match.combatants) poseActor(c, 0.15, match.time);
     match.lastHitAt = match.time - 0.02;
-    // Age the effects a breath — not past them: the muzzle light decays
-    // to a warm glow, the tracers (50 ms) and impact sparks live on.
-    fx.update(0.04, match.time + 0.04, () => {});
+    fx.update(0.02, match.time + 0.02, () => {});
   } else if (name === 'plant') {
     match.phase = 'planted';
     match.round = 5;
@@ -408,10 +412,11 @@ function stageShot(name) {
     match.bomb.z = -18.2;
     match.bomb.timer = 23.5;
     // The objective frame, close: the player covers site A's charge from
-    // the site's south side while a Jackal kneels on it, halfway through
-    // a defuse — the channel bar, the blinking charge and the site ring
-    // all in one frame, a second Jackal pushing the east door behind.
-    placeAt(player, 16.9, -23.0, yawFacing(16.9, -23.0, 17.4, -17.3), -0.06);
+    // four metres south while a Jackal kneels on it, halfway through a
+    // defuse — and shoots him for it: the channel bar, the blinking
+    // charge, the defuser flinching under the hit and the site ring all
+    // in one frame, a second Jackal pushing the east door behind.
+    placeAt(player, 16.9, -21.8, yawFacing(16.9, -21.8, 17.4, -17.3), -0.08);
     const defuser = foes[1];
     placeAt(defuser, 17.4, -17.3, yawFacing(17.4, -17.3, 16.4, -18.2), -0.15);
     defuser.crouch = true;
@@ -430,6 +435,20 @@ function stageShot(name) {
     foes[0].vel.x = -2.6;
     foes[0].vel.z = -1.4;
     defuser.crouchAmt = 1;
+    // Trade fire around the defuse: the player's round lands on the
+    // defuser himself first — flinch, sparks, dust, the damage number —
+    // and ages past its own muzzle flash; then the mate across the site
+    // and the pusher exchange the tracers that stay in the frame.
+    fireAtPoint(player, defuser.pos.x, defuser.pos.z, 0.95);
+    fx.update(0.06, match.time + 0.06, () => {});
+    match.time += 0.06;
+    fireAtPoint(mates[1], foes[0].pos.x, foes[0].pos.z, 1.1);
+    fireAtPoint(foes[0], player.pos.x + 1.3, player.pos.z, 1.25);
+    for (const c of match.combatants) poseActor(c, 0.15, match.time);
+    fx.update(0.02, match.time + 0.02, () => {});
+    // The steep down-aim would clip the player's own torso into the
+    // near plane; the title shot hides the figure for the same reason.
+    player.group.visible = false;
     // The director clears an unattended defuse while settling, so the
     // channel state is applied after the settle, banner queue emptied.
     // The player has just taken a hit covering the site: the damage

@@ -1,7 +1,6 @@
-// Transient visuals, all pooled: tracers, impact particles, muzzle flashes,
-// thrown grenades, smoke clouds and the planted charge. Pools are allocated
-// once at boot; the per-frame update writes into preallocated buffers and
-// never creates objects, so a firefight cannot stall the render loop.
+// Transient visuals, all pooled: tracers, impact particles, muzzle
+// flashes, thrown grenades, smoke clouds and the planted charge. Pools
+// are allocated once; the update never creates objects mid-frame.
 import * as THREE from 'three';
 import { PALETTE } from './config.js';
 import { groundAt } from './map.js';
@@ -98,6 +97,12 @@ export function createEffects(scene) {
     grad.addColorStop(1, 'rgba(255,140,40,0)');
     g.fillStyle = grad;
     g.fillRect(0, 0, 64, 64);
+    // A four-point star over the core: a burst, not a round blob.
+    g.fillStyle = 'rgba(255,232,185,0.85)';
+    g.beginPath();
+    g.moveTo(32, 1); g.lineTo(36.5, 27.5); g.lineTo(63, 32); g.lineTo(36.5, 36.5);
+    g.lineTo(32, 63); g.lineTo(27.5, 36.5); g.lineTo(1, 32); g.lineTo(27.5, 27.5);
+    g.closePath(); g.fill();
     return new THREE.CanvasTexture(canvas);
   }
 

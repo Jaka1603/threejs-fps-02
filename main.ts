@@ -10,6 +10,11 @@
 // Play it locally with `node serve.ts`, then open http://localhost:8080.
 // Outside the grader's sandbox, MAKEFUN_OUTPUT_DIR stands in for /output:
 //   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
+//
+// Hand-in v3: the cinematic pass — floating damage numbers, hit
+// flinches, a star-burst muzzle flash, bots that break off wounded
+// instead of trading to the death, a gantry crane over the link row,
+// a deeper colour grade, and the screenshot scenes restaged closer.
 
 import { cpSync, existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
@@ -61,3 +66,4 @@ for (const [name, size] of manifest) {
   console.log(`  ${name} — ${size} bytes`);
 }
 console.log(`COPPERLINE handed in: ${manifest.length} files, ${totalBytes} bytes total.`);
+console.log('Hand-in v3 — damage numbers, hit flinches, retreating bots, the gantry crane.');

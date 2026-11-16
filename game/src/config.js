@@ -2,8 +2,7 @@
 // Every number the rest of the game balances against lives here, in one place.
 
 // Dusk foundry palette: a low amber sun against deep blue shadow, warm
-// concrete and rust in the yard, and a saturated teal/amber team split that
-// still reads at screenshot distance.
+// concrete and rust, and a saturated teal/amber team split.
 export const PALETTE = {
   sky: 0x2e3d4d,        // fallback clear colour behind the sky dome
   fog: 0x77624f,        // warm dusk haze the yard fades into

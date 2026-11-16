@@ -1,10 +1,8 @@
-// Bot brains: perception (vision cone, sight lines, smoke, hearing), a small
+// Bot brains: perception (vision cone, sight lines, smoke, hearing), a
 // state machine (advance, hold, engage, plant, defuse, cover), waypoint
-// pathing through the map graph, and human-shaped aiming — a reaction delay
-// when a target first appears, aim error that shrinks while it stays visible,
-// burst discipline, and strafing between bursts. Team plans are dealt at
-// round start: attackers pick a site and split across its routes, defenders
-// spread 2-1-2 and rotate on information.
+// pathing, and human-shaped aiming — reaction delay, aim error that
+// shrinks on a held sightline, burst discipline, strafing between bursts.
+// Team plans are dealt at round start; defenders spread 2-1-2.
 import { HOLD_POINTS, NODES, POST_PLANT, SITES, nearestNode, nextHop } from './map.js';
 import { currentWeapon, eyeHeight } from './actors.js';
 import { canSee, startReload, throwGrenade, tryShoot } from './combat.js';
@@ -33,6 +31,8 @@ export function createBot(rng, index) {
     nextBurstAt: 0,
     strafeDir: 1,
     strafeFlipAt: 0,
+    retreatUntil: 0,
+    retreated: false,
     moveX: 0, moveZ: 0,
     channeling: null,
     usedUtility: false,
@@ -107,9 +107,9 @@ export function planRound(match) {
   });
 }
 
-// What a bot can currently perceive: the nearest visible enemy, refreshed on
-// a staggered think tick so ten bots never spike the same frame. Blinded bots
-// perceive nothing; gunfire and footsteps arrive through match.noises.
+// What a bot can currently perceive: the nearest visible enemy, refreshed
+// on a staggered think tick. Blinded bots perceive nothing; gunfire and
+// footsteps arrive through match.noises.
 function perceive(match, c, now) {
   const b = c.bot;
   if (now < b.thinkAt) return;
@@ -135,6 +135,7 @@ function perceive(match, c, now) {
       b.enemy = best;
       b.reactionAt = now + b.reaction;
       b.exposure = 0;
+      b.retreated = false; // a fresh contact may be broken off from, once
     }
     b.lastSeenX = best.pos.x;
     b.lastSeenZ = best.pos.z;
@@ -235,6 +236,20 @@ export function updateBot(match, fx, audio, c, dt, now) {
   }
 
   if (b.state === 'engage' && b.enemy) {
+    // Wounded and still taking fire, a bot breaks off instead of trading
+    // to the death: it backpedals from the threat for a breath — gun up,
+    // reloading if dry — then re-engages from where the retreat left it.
+    if (c.health <= 30 && !b.retreated) { b.retreated = true; b.retreatUntil = now + 1.5; }
+    if (now < b.retreatUntil) {
+      const dx = c.pos.x - b.enemy.pos.x;
+      const dz = c.pos.z - b.enemy.pos.z;
+      const dl = Math.hypot(dx, dz) || 1;
+      stepBody(c, dx / dl, dz / dl, SPEED_RUN * 0.9, false, dt);
+      const heldNow = currentWeapon(c);
+      if (heldNow && heldNow.mag < 6) startReload(c, now, audio);
+      aimAndFire(match, fx, audio, c, dt, now);
+      return;
+    }
     aimAndFire(match, fx, audio, c, dt, now);
     // Strafe between bursts, hold ground while firing.
     if (now > b.strafeFlipAt) { b.strafeDir = -b.strafeDir; b.strafeFlipAt = now + match.rng.range(0.55, 1.1); }

@@ -163,6 +163,11 @@ export function tryShoot(match, fx, audio, c, now, rng) {
       anyHit = true;
       anyKill = anyKill || died;
       fx.impact(_hitPoint, _dir, 5, 1.4, now, 0xb0503c);
+      // The shooter's own hits float their damage over the target.
+      if (c.isPlayer) {
+        match.floaters.push({ x: _hitPoint.x, y: _hitPoint.y + 0.3, z: _hitPoint.z, text: String(Math.round(damage)), kill: died, at: now });
+        if (match.floaters.length > 12) match.floaters.shift();
+      }
     } else if (wallDist < def.range) {
       fx.impact(_hitPoint, _dir, 4, 1.2, now);
     }

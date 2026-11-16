@@ -19,6 +19,7 @@ export function createMatch(rng) {
     },
     noises: [],       // { x, z, radius, team, kind } heard this tick, cleared per tick
     killfeed: [],     // { killer, victim, weapon, headshot, at }
+    floaters: [],     // { x, y, z, text, kill, at } damage numbers the HUD projects
     announcements: [],// { text, sub, at } for the HUD banner queue
     roundResult: null,
     matchWinner: null,

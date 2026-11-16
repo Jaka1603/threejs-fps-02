@@ -1,7 +1,6 @@
 // The human's controller: mouse look, WASD movement with walk and crouch
-// stances, firing (full-auto while held, semi-auto per click), reload, weapon
-// slots, grenade keys and footsteps. Round rules — when any of this is
-// allowed — are the director's call; this module only turns keys into intent.
+// stances, firing, reload, weapon slots, grenade keys and footsteps.
+// Round rules are the director's call; this turns keys into intent.
 import { WEAPONS } from './config.js';
 import { currentWeapon } from './actors.js';
 import { startReload, throwGrenade, tryShoot } from './combat.js';

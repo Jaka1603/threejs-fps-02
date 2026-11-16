@@ -1,7 +1,7 @@
 // The HUD: every readout the player fights by — health and armour, money,
-// ammunition and grenades, the round clock and score, a live minimap, the
-// killfeed, announcements, the buy menu and the scoreboard. It only reads
-// match state and writes DOM; all of its elements live in index.html.
+// ammunition, the round clock and score, a live minimap, the killfeed,
+// announcements, the buy menu and the scoreboard. It only reads state.
+import * as THREE from 'three';
 import { ARMOR_PRICE, GRENADES, KIT_PRICE, ROUND, WEAPONS } from './config.js';
 import { BOXES, SITES } from './map.js';
 import { currentWeapon } from './actors.js';
@@ -47,6 +47,18 @@ export function createHud(onBuy) {
   let lastBannerAt = -99;
   let buyOpen = false;
   const buyButtons = new Map();
+
+  // Floating damage numbers: a pool of divs projected from the world,
+  // fed by combat.js through match.floaters; a kill prints larger, red.
+  const floaterPool = [];
+  for (let i = 0; i < 10; i += 1) {
+    const d = document.createElement('div');
+    d.className = 'floater';
+    d.style.opacity = '0';
+    document.getElementById('hud').appendChild(d);
+    floaterPool.push(d);
+  }
+  const projV = new THREE.Vector3();
 
   for (const item of BUY_CATALOG) {
     const button = document.createElement('button');
@@ -192,6 +204,23 @@ export function createHud(onBuy) {
       el.scope.style.opacity = view.scoped ? 1 : 0;
       el.spectate.hidden = !view.spectating;
       if (view.spectating) el.spectate.textContent = `SPECTATING ${view.spectating} — click for next`;
+
+      // Damage numbers: the newest floaters, projected from the world.
+      const fl = match.floaters || [];
+      for (let i = 0; i < floaterPool.length; i += 1) {
+        const d = floaterPool[i];
+        const f = fl[fl.length - 1 - i];
+        if (!f || now - f.at > 0.9 || !view.camera) { d.style.opacity = '0'; continue; }
+        const age = (now - f.at) / 0.9;
+        projV.set(f.x, f.y + age * 0.55, f.z).project(view.camera);
+        if (projV.z > 1) { d.style.opacity = '0'; continue; }
+        d.textContent = f.text;
+        d.className = f.kill ? 'floater kill' : 'floater';
+        const sx = (projV.x * 0.5 + 0.5) * window.innerWidth;
+        const sy = (-projV.y * 0.5 + 0.5) * window.innerHeight;
+        d.style.transform = `translate(${sx}px, ${sy}px) translate(-50%, -120%)`;
+        d.style.opacity = String(1 - age * age);
+      }
 
       // Killfeed: entries younger than five seconds.
       const fresh = match.killfeed.filter((k) => now - k.at < 5).slice(-5);

@@ -1,7 +1,6 @@
-// The Foundry Yard: an original two-site map. This module owns the map's data
-// (wall boxes, crates, sites, spawns, the bot waypoint graph) and builds its
-// three.js geometry from that same data, so what the player sees, what physics
-// collides with and what the bots path through can never drift apart.
+// The Foundry Yard: an original two-site map. This module owns the map's
+// data (boxes, sites, spawns, the bot waypoint graph) and builds its
+// geometry from that same data, so visuals, physics and pathing never drift.
 import * as THREE from 'three';
 import { PALETTE } from './config.js';
 
@@ -114,10 +113,8 @@ export function groundAt(x, z, feetY) {
   return ground;
 }
 
-// Move a circle (the fighter) by (dx, dz), axis separated, sliding along any
-// collider too tall to step onto. Mutates pos {x, z}; feetY is the current
-// foot height, height the fighter's standing height (head clearance ignored:
-// no collider floats, so anything stepped over is stood upon instead).
+// Move a circle by (dx, dz), axis separated, sliding along any collider
+// too tall to step onto. Head clearance is ignored: nothing floats.
 export function moveCircle(pos, radius, dx, dz, feetY) {
   pos.x += dx;
   for (const c of colliders) {
@@ -135,9 +132,7 @@ export function moveCircle(pos, radius, dx, dz, feetY) {
   }
 }
 
-// 2D segment vs the sight-blocking walls. Eye and target heights only matter
-// through the wall height test above: every sight blocker is taller than a
-// crouched head, everything else is low enough to see a standing fighter over.
+// 2D segment vs the sight-blocking walls (all taller than a crouched head).
 export function sightBlocked(x1, z1, x2, z2) {
   for (const c of sightBlockers) {
     if (segmentHitsBox(x1, z1, x2, z2, c)) return true;
@@ -294,8 +289,8 @@ function groundTexture() {
     g.beginPath(); g.moveTo(i * 256, 0); g.lineTo(i * 256, 2048); g.stroke();
     g.beginPath(); g.moveTo(0, i * 256); g.lineTo(2048, i * 256); g.stroke();
   }
-  // Painted traffic paint: a worn yellow centre line up the mid lane and
-  // white edge lines along the link row — the yard's lanes read at a glance.
+  // Traffic paint: a worn yellow centre line up the mid lane, white
+  // edge lines along the link row — the lanes read at a glance.
   g.strokeStyle = 'rgba(232,178,60,0.55)';
   g.lineWidth = 9;
   g.setLineDash([46, 34]);
@@ -304,7 +299,7 @@ function groundTexture() {
   g.strokeStyle = 'rgba(238,234,222,0.4)';
   g.lineWidth = 7;
   g.beginPath(); g.moveTo(px(-33), px(-7)); g.lineTo(px(33), px(-7)); g.stroke();
-  // Site aprons, stronger than before: a tinted slab plus a hazard border.
+  // Site aprons: a tinted slab plus a hazard border.
   for (const key of ['A', 'B']) {
     const s = SITES[key];
     g.fillStyle = key === 'A' ? 'rgba(216,106,58,0.26)' : 'rgba(58,154,216,0.26)';
@@ -319,8 +314,7 @@ function groundTexture() {
   return texture;
 }
 
-// Small deterministic PRNG for texture painting: the yard must look the
-// same on every load, so Math.random never touches the art.
+// Deterministic PRNG for texture painting: same art on every load.
 function mulberry(seed) {
   let a = seed >>> 0;
   return () => {
@@ -364,9 +358,8 @@ function crateTexture() {
   return texture;
 }
 
-// Cast concrete for the yard walls: formwork seams, tie holes, rain streaks
-// running down from the top edge and a grime gradient at the foot. Painted
-// mostly in horizontal bands so it stretches gracefully over long walls.
+// Cast concrete for the yard walls: formwork seams, tie holes, rain
+// streaks and a grime gradient at the foot, in horizontal bands.
 function wallTexture() {
   const canvas = document.createElement('canvas');
   canvas.width = 512;
@@ -415,8 +408,7 @@ function wallTexture() {
   return texture;
 }
 
-// Corrugated shipping-container skin in one colour: vertical ribs, door
-// seams, rust at the corners and a stencilled unit number.
+// Corrugated container skin: ribs, door seams, a stencilled unit number.
 function containerTexture(hex, label) {
   const canvas = document.createElement('canvas');
   canvas.width = 256;
@@ -445,10 +437,8 @@ function containerTexture(hex, label) {
   return texture;
 }
 
-// The dusk sky, painted once: indigo zenith, a copper sun band on the
-// horizon, the sun's own glow low in the west, thin cloud streaks catching
-// the last light, and the first stars up top. Drawn equirect-style so it
-// wraps the dome without a seam showing.
+// The dusk sky, painted once: indigo zenith, a copper sun band, the
+// sun's glow low in the west, cloud streaks and the first stars.
 function skyTexture() {
   const canvas = document.createElement('canvas');
   canvas.width = 1024;
@@ -538,8 +528,7 @@ function glowTexture() {
   return new THREE.CanvasTexture(canvas);
 }
 
-// Builds the whole yard into the scene. Returns nothing; physics reads the
-// data tables above, not the meshes.
+// Builds the whole yard into the scene; physics reads the data tables.
 export function buildWorld(scene) {
   // The sky dome: a painted dusk, far outside the fence, untouched by fog.
   const dome = new THREE.Mesh(
@@ -636,6 +625,7 @@ export function buildWorld(scene) {
     scene.add(m);
   }
   // Aircraft beacons on the two tallest stacks.
+  const glowTex = glowTexture();
   const beaconMat = new THREE.MeshBasicMaterial({ color: 0xff3524 });
   for (const [x, z, , h] of [stacks[1], stacks[6]]) {
     const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.32, 8, 8), beaconMat);
@@ -643,8 +633,7 @@ export function buildWorld(scene) {
     scene.add(beacon);
   }
 
-  // Freight stacked outside the fence: container piles tall enough to read
-  // over the perimeter wall, pure dressing — no collider ever reaches them.
+  // Freight stacked outside the fence: pure dressing, no colliders.
   const containerMats = [
     new THREE.MeshStandardMaterial({ map: containerTexture(PALETTE.containerRed, 'FYCU 2041'), roughness: 0.62, metalness: 0.35 }),
     new THREE.MeshStandardMaterial({ map: containerTexture(PALETTE.containerTeal, 'FYCU 7780'), roughness: 0.62, metalness: 0.35 }),
@@ -667,10 +656,8 @@ export function buildWorld(scene) {
     }
   }
 
-  // Yard lamps on the band walls: the dusk shift works under its own light.
-  // A dark stem, an emissive head and a soft glow sprite; no real light
-  // sources, so the render loop pays nothing for them.
-  const glowTex = glowTexture();
+  // Yard lamps on the band walls: a stem, an emissive head and a glow
+  // sprite; no real light sources, so they cost the render loop nothing.
   const lampStem = new THREE.MeshStandardMaterial({ color: 0x2c2f33, roughness: 0.5, metalness: 0.5 });
   const lampHead = new THREE.MeshBasicMaterial({ color: PALETTE.lamp });
   const lampAt = (x, z, wallTop) => {
@@ -707,4 +694,39 @@ export function buildWorld(scene) {
     lintel.position.set(s.x, 3.28, -12.42);
     scene.add(lintel);
   }
+
+  // The gantry crane that works the yard: legs against the side walls,
+  // a beam over the link row, a container hanging from the trolley clear
+  // of every head below. Pure dressing — no collider — but every long
+  // view north gains a silhouette against the dusk.
+  const craneMat = new THREE.MeshStandardMaterial({ color: 0x8a5a28, roughness: 0.6, metalness: 0.45 });
+  const beamY = 10.5;
+  for (const sx of [-1, 1]) {
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.7, beamY, 0.7), craneMat);
+    leg.position.set(sx * 33.2, beamY / 2, -6);
+    leg.castShadow = true;
+    scene.add(leg);
+    const foot = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.5, 1.6), trimMat);
+    foot.position.set(sx * 33.2, 0.25, -6);
+    scene.add(foot);
+  }
+  const beam = new THREE.Mesh(new THREE.BoxGeometry(67.2, 0.55, 0.9), craneMat);
+  beam.position.set(0, beamY, -6);
+  scene.add(beam);
+  const trolley = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.7, 1.3), trimMat);
+  trolley.position.set(8, beamY - 0.7, -6);
+  scene.add(trolley);
+  const cable = new THREE.Mesh(new THREE.BoxGeometry(0.06, 2.6, 0.06), trimMat);
+  cable.position.set(8, beamY - 2.3, -6);
+  scene.add(cable);
+  const hang = new THREE.Mesh(containerGeo, containerMats[1]);
+  hang.position.set(8, beamY - 4.9, -6);
+  hang.castShadow = true;
+  scene.add(hang);
+  const craneBeacon = new THREE.Mesh(
+    new THREE.SphereGeometry(0.16, 8, 8),
+    new THREE.MeshBasicMaterial({ color: 0xffa028 }),
+  );
+  craneBeacon.position.set(0, beamY + 0.55, -6);
+  scene.add(craneBeacon);
 }
